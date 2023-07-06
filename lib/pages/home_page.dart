@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
+import 'package:taskly/models/task.dart';
 
 class HomePage extends StatefulWidget {
   HomePage();
@@ -11,6 +13,8 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   late double _deviceHeight, _deviceWidth;
+  String? _newTaskContent;
+  Box? _box;
   _HomePageState();
 
   @override
@@ -25,36 +29,75 @@ class _HomePageState extends State<HomePage> {
           style: TextStyle(fontSize: 25),
         ),
       ),
-      body: _taskList(),
+      body: _taskView(),
       floatingActionButton: _addTaskButton(),
     );
   }
 
+  Widget _taskView() {
+    return FutureBuilder(
+      future: Hive.openBox("task"),
+      builder: (BuildContext _context, AsyncSnapshot _snapshot) {
+        if (_snapshot.connectionState == ConnectionState.done) {
+          _box = _snapshot.data;
+          return _taskList();
+        } else {
+          return const Center(
+            child: CircularProgressIndicator(),
+          );
+        }
+      },
+    );
+  }
+
   Widget _taskList() {
-    return ListView(
-      children: [
-        ListTile(
-          title: const Text(
-            "Do Workout",
-            style: TextStyle(decoration: TextDecoration.lineThrough),
+  //  Task _newTask = Task(content: "Go on Walk", timestamp: DateTime.now(), done: false);
+   // _box?.add(_newTask.toMap());
+    List tasks = _box!.values.toList();
+    return 
+      ListView.builder(itemBuilder: (BuildContext _context,int _index){
+        var task = Task.fromMap(tasks[_index]);
+        return  ListTile(
+          title: Text(
+            task.content,
+            style: TextStyle(decoration: task.done?TextDecoration.lineThrough:null),
           ),
           subtitle: Text(
-            DateTime.now().toString(),
+            task.timestamp.toString(),
           ),
-          trailing: const Icon(
-            Icons.check_box_outlined,
+          trailing:Icon(
+            task.done ?Icons.check_box_outlined:Icons.check_box_outline_blank_outlined,
             color: Colors.red,
           ),
-        ),
-      ],
-    );
+        );
+
+      },itemCount: tasks.length,);
   }
 
   Widget _addTaskButton() {
     return FloatingActionButton(
-      onPressed: () {},
-      child: const Icon(Icons.add),
+      onPressed: _displayTaskPopup,
       backgroundColor: Colors.red,
+      child: const Icon(Icons.add),
+    );
+  }
+
+  void _displayTaskPopup() {
+    showDialog(
+      context: context,
+      builder: (BuildContext _context) {
+        return AlertDialog(
+          title: const Text("Add new Task!"),
+          content: TextField(
+            onSubmitted: (_value) {},
+            onChanged: (_value) {
+              setState(() {
+                _newTaskContent = _value;
+              });
+            },
+          ),
+        );
+      },
     );
   }
 }
